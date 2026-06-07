@@ -1,0 +1,75 @@
+# VQA project .gitignore
+# ======================
+# VQA research project using PyTorch + VizWiz-VQA dataset.
+# Ignores large/transient/generated files while keeping
+# source code, configs, and annotation JSONs tracked.
+
+# ─── Python 编译缓存 ───
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+
+# ─── PyTorch 模型权重 ───
+*.pt
+*.pth
+*.pkl
+*.bin
+
+# ─── 数据集 ───
+data
+
+# ─── 训练输出 ───
+checkpoints/
+logs/
+outputs/
+
+# ─── 缓存 ───
+.cache/
+*.cache/
+torch_hub/
+
+# ─── 数据集镜像（不包含 Annotations/） ───
+data/VizWiz-VQA/raw/train/
+data/VizWiz-VQA/raw/val/
+data/VizWiz-VQA/raw/test/
+
+# ─── 虚拟环境 ───
+.venv/
+venv/
+env/
+ENV/
+
+# ─── IDE / 编辑器 ───
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ─── 操作系统文件 ───
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# ─── 密钥与敏感信息 ───
+.env
+.env.local
+*.pem
+
+# ─── Jupyter Notebook ───
+.ipynb_checkpoints/
+*.ipynb
+
+# ─── 临时 / 调试文件 ───
+*.tmp
+*.bak
+*.orig
+debug_*.py
+test_*.py
+verify_*.py
