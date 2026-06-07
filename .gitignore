@@ -19,9 +19,6 @@ build/
 *.pkl
 *.bin
 
-# ─── 数据集 ───
-data
-
 # ─── 训练输出 ───
 checkpoints/
 logs/
@@ -32,10 +29,11 @@ outputs/
 *.cache/
 torch_hub/
 
-# ─── 数据集镜像（不包含 Annotations/） ───
+# ─── 数据集 ───
 data/VizWiz-VQA/raw/train/
 data/VizWiz-VQA/raw/val/
 data/VizWiz-VQA/raw/test/
+data/VQA - Computer Vision & NLP/
 
 # ─── 虚拟环境 ───
 .venv/
