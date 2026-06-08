@@ -33,7 +33,8 @@ plt.rcParams.update({
     "axes.facecolor":    "white",
     "axes.edgecolor":    "#333333",
     "axes.linewidth":    0.8,
-    "axes.grid":         False,
+    "axes.grid":         True,
+    "grid.alpha":        0.3,
     "grid.alpha":        0.25,
     "grid.linestyle":    "--",
     "grid.linewidth":    0.6,
@@ -101,12 +102,11 @@ def extract_experiment_label(log_path: str) -> str:
 
 
 def _set_spines(ax):
-    """Remove top and right spines; thin remaining ones; add subtle grid."""
+    """Remove top and right spines; thin remaining ones."""
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["bottom"].set_linewidth(0.8)
     ax.spines["left"].set_linewidth(0.8)
-    ax.grid(True, alpha=0.3, linestyle="--", linewidth=0.6)
 
 
 def plot_curves(exp_data: dict, output_dir: str, model_name: str = "vgg_lstm_concat"):
@@ -124,6 +124,8 @@ def plot_curves(exp_data: dict, output_dir: str, model_name: str = "vgg_lstm_con
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=FIGURE_SIZE)
 
+    single = len(exp_data) == 1  # use clean labels if only one experiment
+
     for idx, (name, data) in enumerate(exp_data.items()):
         if not data:
             continue
@@ -134,25 +136,31 @@ def plot_curves(exp_data: dict, output_dir: str, model_name: str = "vgg_lstm_con
         # Skip markers if too many epochs (cluttered)
         use_marker = len(epochs) <= 15
 
+        # Labels: clean "Train / Val" when single experiment
+        lbl_train_loss = "Train" if single else f"{name} (Train)"
+        lbl_val_loss   = "Val"   if single else f"{name} (Val)"
+        lbl_train_acc  = "Train" if single else f"{name} (Train Acc)"
+        lbl_val_vqa    = "Val"   if single else f"{name} (Val VQA)"
+
         # -- Loss (left) ------------------------------------------------
         ax1.plot(epochs, [d["train_loss"] for d in data],
                  linestyle="--", color=c, linewidth=1.0, alpha=0.6,
                  marker=m if use_marker else None, markersize=4,
-                 label=f"{name} (Train)")
+                 label=lbl_train_loss)
         ax1.plot(epochs, [d["val_loss"] for d in data],
                  linestyle="-", color=c, linewidth=1.4,
                  marker=m if use_marker else None, markersize=4,
-                 label=f"{name} (Val)")
+                 label=lbl_val_loss)
 
         # -- VQA Accuracy (right) ---------------------------------------
         ax2.plot(epochs, [d["train_acc"] for d in data],
                  linestyle="--", color=c, linewidth=1.0, alpha=0.6,
                  marker=m if use_marker else None, markersize=4,
-                 label=f"{name} (Train Acc)")
+                 label=lbl_train_acc)
         ax2.plot(epochs, [d["val_vqa"] for d in data],
                  linestyle="-", color=c, linewidth=1.4,
                  marker=m if use_marker else None, markersize=4,
-                 label=f"{name} (Val VQA)")
+                 label=lbl_val_vqa)
 
     # ====================== Loss plot ==================================
     _set_spines(ax1)
