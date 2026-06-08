@@ -101,11 +101,12 @@ def extract_experiment_label(log_path: str) -> str:
 
 
 def _set_spines(ax):
-    """Remove top and right spines; thin remaining ones."""
+    """Remove top and right spines; thin remaining ones; add subtle grid."""
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.spines["bottom"].set_linewidth(0.8)
     ax.spines["left"].set_linewidth(0.8)
+    ax.grid(True, alpha=0.3, linestyle="--", linewidth=0.6)
 
 
 def plot_curves(exp_data: dict, output_dir: str, model_name: str = "vgg_lstm_concat"):
