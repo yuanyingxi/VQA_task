@@ -1,8 +1,8 @@
 """
 Usage:
-    python -m scripts.plot_training                                        # figures/vgg_lstm_concat/
-    python -m scripts.plot_training --model_name new_model                 # figures/new_model/
-    python -m scripts.plot_training --output my_figures                    # custom output dir
+    python -m scripts.plot_training                                    # default: logs/vgg_lstm_concat
+    python -m scripts.plot_training --log_dir logs/vgg_lstm_concat     # specific dir
+    python -m scripts.plot_training --log_dir logs/other_model --output my_figures
 """
 import argparse
 import os
@@ -15,23 +15,46 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import matplotlib
 matplotlib.use("Agg")  # non-interactive backend
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 
-# ─── Config ────────────────────────────────────────────────────────────
-OUTPUT_DEFAULT = "figures"
-FIGURE_SIZE = (14, 5.5)
-COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd"]
-DPI = 200
-
+# ─── RC Params (clean research style) ──────────────────────────────
+# Inspired by typical NeurIPS / ICML / CVPR paper figures:
+# thin lines, white background, no top/right spines, readable fonts
 plt.rcParams.update({
-    "font.size": 11,
-    "axes.titlesize": 13,
-    "axes.labelsize": 11,
-    "legend.fontsize": 9,
-    "figure.facecolor": "white",
-    "axes.facecolor": "#f8f9fa",
-    "axes.grid": True,
-    "grid.alpha": 0.3,
+    "font.family":       "sans-serif",
+    "font.sans-serif":   ["Arial", "Helvetica", "DejaVu Sans"],
+    "font.size":         12,
+    "axes.titlesize":    13,
+    "axes.labelsize":    12,
+    "legend.fontsize":   10,
+    "xtick.labelsize":   10,
+    "ytick.labelsize":   10,
+    "figure.facecolor":  "white",
+    "axes.facecolor":    "white",
+    "axes.edgecolor":    "#333333",
+    "axes.linewidth":    0.8,
+    "axes.grid":         False,
+    "grid.alpha":        0.25,
+    "grid.linestyle":    "--",
+    "grid.linewidth":    0.6,
+    "legend.frameon":    True,
+    "legend.framealpha": 0.85,
+    "legend.edgecolor":  "#cccccc",
+    "legend.fancybox":   False,
+    "lines.linewidth":   1.2,
+    "lines.markersize":  5,
 })
+
+# ─── Config ─────────────────────────────────────────────────────────
+OUTPUT_DEFAULT = "figures"
+FIGURE_SIZE = (12, 4.5)  # slightly wider + shorter for side-by-side
+DPI = 250
+
+# ColorBrewer Set1 (colorblind-friendly, distinct)
+COLORS = ["#e41a1c", "#377eb8", "#4daf4a", "#984ea3", "#ff7f00"]
+
+# Marker cycle (for multi-experiment clarity)
+MARKERS = ["o", "s", "D", "^", "v"]
 
 
 def parse_training_log(log_path: str) -> list[dict]:
@@ -77,9 +100,17 @@ def extract_experiment_label(log_path: str) -> str:
     return basename.replace(".log", "").replace("train_", "")
 
 
+def _set_spines(ax):
+    """Remove top and right spines; thin remaining ones."""
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["bottom"].set_linewidth(0.8)
+    ax.spines["left"].set_linewidth(0.8)
+
+
 def plot_curves(exp_data: dict, output_dir: str, model_name: str = "vgg_lstm_concat"):
     """
-    Generate side-by-side loss and VQA accuracy plots.
+    Generate side-by-side loss and VQA accuracy plots (research-paper style).
 
     Args:
         exp_data: dict of {experiment_label: [epoch_dict, ...]}
@@ -92,66 +123,77 @@ def plot_curves(exp_data: dict, output_dir: str, model_name: str = "vgg_lstm_con
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=FIGURE_SIZE)
 
-    single_exp = len(exp_data) == 1
-
     for idx, (name, data) in enumerate(exp_data.items()):
         if not data:
             continue
         epochs = [d["epoch"] for d in data]
         c = COLORS[idx % len(COLORS)]
+        m = MARKERS[idx % len(MARKERS)]
 
-        # Legend labels: single experiment → short; multiple → prefixed
-        if single_exp:
-            loss_train_label, loss_val_label = "Train Loss", "Val Loss"
-            acc_train_label, acc_val_label = "Train Acc", "Val VQA"
-        else:
-            loss_train_label = f"{name} (Train)"
-            loss_val_label   = f"{name} (Val)"
-            acc_train_label  = f"{name} (Train Acc)"
-            acc_val_label    = f"{name} (Val VQA)"
+        # Skip markers if too many epochs (cluttered)
+        use_marker = len(epochs) <= 15
 
         # -- Loss (left) ------------------------------------------------
         ax1.plot(epochs, [d["train_loss"] for d in data],
-                 linestyle="--", color=c, linewidth=1.5, alpha=0.7,
-                 label=loss_train_label)
+                 linestyle="--", color=c, linewidth=1.0, alpha=0.6,
+                 marker=m if use_marker else None, markersize=4,
+                 label=f"{name} (Train)")
         ax1.plot(epochs, [d["val_loss"] for d in data],
-                 linestyle="-", color=c, linewidth=2,
-                 label=loss_val_label)
+                 linestyle="-", color=c, linewidth=1.4,
+                 marker=m if use_marker else None, markersize=4,
+                 label=f"{name} (Val)")
 
         # -- VQA Accuracy (right) ---------------------------------------
         ax2.plot(epochs, [d["train_acc"] for d in data],
-                 linestyle="--", color=c, linewidth=1.5, alpha=0.7,
-                 label=acc_train_label)
+                 linestyle="--", color=c, linewidth=1.0, alpha=0.6,
+                 marker=m if use_marker else None, markersize=4,
+                 label=f"{name} (Train Acc)")
         ax2.plot(epochs, [d["val_vqa"] for d in data],
-                 linestyle="-", color=c, linewidth=2,
-                 label=acc_val_label)
+                 linestyle="-", color=c, linewidth=1.4,
+                 marker=m if use_marker else None, markersize=4,
+                 label=f"{name} (Val VQA)")
 
-    # -- Style Loss plot ------------------------------------------------
-    ax1.set_xlabel("Epoch", fontsize=12)
-    ax1.set_ylabel("Loss", fontsize=12)
-    ax1.set_title("Loss Curves", fontsize=14, fontweight="bold")
-    if ax1.get_legend_handles_labels()[0]:
-        ax1.legend(framealpha=0.9, edgecolor="#ccc")
+    # ====================== Loss plot ==================================
+    _set_spines(ax1)
+    ax1.set_xlabel("Epoch")
+    ax1.set_ylabel("Loss")
+    ax1.set_title("Loss", fontweight="normal", pad=10)
     ax1.set_xlim(left=0.5)
+    handles1, labels1 = ax1.get_legend_handles_labels()
+    if handles1:
+        ax1.legend(handles1, labels1, framealpha=0.8, edgecolor="#dddddd",
+                   loc="upper right")
 
-    # -- Style Accuracy plot --------------------------------------------
-    ax2.set_xlabel("Epoch", fontsize=12)
-    ax2.set_ylabel("Accuracy", fontsize=12)
-    ax2.set_title("VQA Accuracy Curves", fontsize=14, fontweight="bold")
-    if ax2.get_legend_handles_labels()[0]:
-        ax2.legend(framealpha=0.9, edgecolor="#ccc")
+    # ====================== Accuracy plot ==============================
+    _set_spines(ax2)
+    ax2.set_xlabel("Epoch")
+    ax2.set_ylabel("Accuracy")
+    ax2.set_title("VQA Accuracy", fontweight="normal", pad=10)
     ax2.set_xlim(left=0.5)
-    # Compute y-axis lower bound
+
+    # Set y-axis to percentage
+    ax2.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:.0%}"))
+
+    # Lower y-axis bound with some padding
     all_vqa = [d["val_vqa"] for d_list in exp_data.values() for d in d_list]
     if all_vqa:
-        ax2.set_ylim(bottom=max(0, min(all_vqa) - 0.05))
+        bottom = max(0.0, min(all_vqa) - 0.04)
+    else:
+        bottom = 0.0
+    ax2.set_ylim(bottom=bottom)
 
-    # -- Overall title --------------------------------------------------
-    fig.suptitle(f"VizWiz-VQA \u00b7 {model_name}",
-                 fontsize=15, fontweight="bold", y=1.02)
+    handles2, labels2 = ax2.get_legend_handles_labels()
+    if handles2:
+        ax2.legend(handles2, labels2, framealpha=0.8, edgecolor="#dddddd",
+                   loc="lower right")
+
+    # ====================== Overall ====================================
+    # Subtle suptitle (not bold, smaller)
+    fig.suptitle(f"VizWiz-VQA  ·  {model_name}",
+                 fontsize=13, fontweight="normal", y=1.02, color="#333333")
     plt.tight_layout()
 
-    # -- Save -----------------------------------------------------------
+    # Save
     os.makedirs(output_dir, exist_ok=True)
     for fmt in ["png", "svg"]:
         out_path = os.path.join(output_dir, f"training_curves.{fmt}")
@@ -161,7 +203,8 @@ def plot_curves(exp_data: dict, output_dir: str, model_name: str = "vgg_lstm_con
         print(f"  Saved: {out_path} ({size_kb:.0f} KB)")
 
     plt.close()
-    print(f"  -> Plotted {len(exp_data)} experiment(s)")
+    n_exp = len(exp_data)
+    print(f"  -> Plotted {n_exp} experiment(s)")
 
 
 def main():
@@ -170,8 +213,8 @@ def main():
                         help="Log directory (default: logs/<MODEL_NAME>)")
     parser.add_argument("--model_name", type=str, default="vgg_lstm_concat",
                         help="Model name (used to locate log dir and figure title)")
-    parser.add_argument("--output", type=str, default=None,
-                        help="Output directory (default: figures/<model_name>)")
+    parser.add_argument("--output", type=str, default=OUTPUT_DEFAULT,
+                        help=f"Output directory (default: {OUTPUT_DEFAULT})")
     args = parser.parse_args()
 
     # Determine log directory
@@ -180,10 +223,6 @@ def main():
         log_dir = project_root / "logs" / args.model_name
     else:
         log_dir = Path(args.log_dir)
-
-    # Default output: figures/<model_name>
-    if args.output is None:
-        args.output = str(project_root / OUTPUT_DEFAULT / args.model_name)
 
     if not log_dir.exists():
         print(f"  Log directory not found: {log_dir}")
