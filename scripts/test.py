@@ -17,16 +17,16 @@ from torchvision import transforms
 from src.configs.vgg_lstm_concat_config import (
     VAL_ANN, TEST_ANN,
     VAL_IMG_ROOT, TEST_IMG_ROOT,
-    CKPT_DIR, OUTPUT_DIR,
+    CKPT_DIR, OUTPUT_DIR, LOG_DIR,
     BATCH_SIZE, NUM_WORKERS, PIN_MEMORY,
     MAX_QUSETION_VOCAB,
 )
 import src.configs.vgg_lstm_concat_config as cfg
-from src.utils import get_logger, AverageMeter
+from src.utils import get_logger, AverageMeter, now_str
 from src.dataset import VizWizVQADataset, build_question_vocab
 from src.models.vgg_lstm_concat import VGG_LSTM_Concat
 from src.engine import predict
-from src.metrics import vqa_accuracy
+from src.metrics import vqa_accuracy, sbert_similarity
 
 
 def parse_args() -> argparse.Namespace:
@@ -56,7 +56,13 @@ def main() -> None:
     # Resolve argparse defaults (were captured at module import time)
     args.save_dir = args.save_dir or cfg.CKPT_DIR
 
-    logger = get_logger("test")
+    # ── Setup log file ──
+    ts = now_str()
+    log_dir = str(Path(cfg.PROJECT_ROOT) / "logs" / cfg.MODEL_NAME)
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, f"{args.split}_{ts}.log")
+
+    logger = get_logger("test", log_file=log_file)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info("Using device: %s", device)
@@ -153,6 +159,21 @@ def main() -> None:
     logger.info(
         "%s VQA Accuracy over %d samples: %.4f",
         args.split, vqa_meter.count, vqa_meter.avg,
+    )
+
+    # ── SBERT Similarity ───────────────────────────────────────────────
+    sbert_meter = AverageMeter()
+    logger.info("Computing SBERT similarity...")
+    for pred in predictions:
+        img_id = pred["image"]
+        gt_answers = gt_map.get(img_id, [])
+        if gt_answers:
+            score = sbert_similarity(pred["answer"], gt_answers)
+            sbert_meter.update(score, 1)
+
+    logger.info(
+        "%s SBERT Similarity over %d samples: %.4f",
+        args.split, sbert_meter.count, sbert_meter.avg,
     )
 
 
