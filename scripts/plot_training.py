@@ -92,27 +92,39 @@ def plot_curves(exp_data: dict, output_dir: str, model_name: str = "vgg_lstm_con
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=FIGURE_SIZE)
 
+    single_exp = len(exp_data) == 1
+
     for idx, (name, data) in enumerate(exp_data.items()):
         if not data:
             continue
         epochs = [d["epoch"] for d in data]
         c = COLORS[idx % len(COLORS)]
 
+        # Legend labels: single experiment → short; multiple → prefixed
+        if single_exp:
+            loss_train_label, loss_val_label = "Train Loss", "Val Loss"
+            acc_train_label, acc_val_label = "Train Acc", "Val VQA"
+        else:
+            loss_train_label = f"{name} (Train)"
+            loss_val_label   = f"{name} (Val)"
+            acc_train_label  = f"{name} (Train Acc)"
+            acc_val_label    = f"{name} (Val VQA)"
+
         # -- Loss (left) ------------------------------------------------
         ax1.plot(epochs, [d["train_loss"] for d in data],
                  linestyle="--", color=c, linewidth=1.5, alpha=0.7,
-                 label=f"{name} (Train)")
+                 label=loss_train_label)
         ax1.plot(epochs, [d["val_loss"] for d in data],
                  linestyle="-", color=c, linewidth=2,
-                 label=f"{name} (Val)")
+                 label=loss_val_label)
 
         # -- VQA Accuracy (right) ---------------------------------------
         ax2.plot(epochs, [d["train_acc"] for d in data],
                  linestyle="--", color=c, linewidth=1.5, alpha=0.7,
-                 label=f"{name} (Train Acc)")
+                 label=acc_train_label)
         ax2.plot(epochs, [d["val_vqa"] for d in data],
                  linestyle="-", color=c, linewidth=2,
-                 label=f"{name} (Val VQA)")
+                 label=acc_val_label)
 
     # -- Style Loss plot ------------------------------------------------
     ax1.set_xlabel("Epoch", fontsize=12)
